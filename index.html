@@ -151,6 +151,7 @@
         <button id="saveGhConfigBtn" class="button secondary">保存非機密設定</button>
         <button id="testGithubBtn" class="button ghost">測試 GitHub 連線</button>
         <button id="syncAllBtn" class="button primary">備份全部紀錄</button>
+        <button id="restoreGithubBtn" class="button ghost">從 GitHub 還原</button>
       </div>
       <div id="syncLog" class="sync-log" aria-live="polite"></div>
     </section>
@@ -178,6 +179,8 @@
     </article>
   </template>
 
-  <script src="app.js" defer></script>
+  <script src="app-core.js" defer></script>
+  <script src="app-storage-ui.js" defer></script>
+  <script src="app-github-init.js" defer></script>
 </body>
 </html>
