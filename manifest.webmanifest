@@ -1,0 +1,13 @@
+{
+  "name": "手機地震儀",
+  "short_name": "地震儀",
+  "description": "使用手機加速度感測器即時顯示、錄製與回放震動波形。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07101d",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
