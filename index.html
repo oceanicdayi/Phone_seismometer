@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="description" content="使用手機加速度感測器，即時顯示、錄製與回放震動波形。" />
+  <title>手機地震儀</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">MOBILE SEISMOGRAPH</p>
+      <h1>手機地震儀</h1>
+      <p class="subtitle">即時記錄手機三軸加速度，保存事件並回放波形</p>
+    </div>
+    <div class="status-stack">
+      <span id="secureStatus" class="status-chip">檢查 HTTPS…</span>
+      <span id="sensorStatus" class="status-chip muted">尚未啟用感測器</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel hero-panel">
+      <div class="toolbar wrap">
+        <button id="enableSensorBtn" class="button primary">啟用手機感測器</button>
+        <button id="demoBtn" class="button secondary">桌面模擬訊號</button>
+        <button id="installBtn" class="button ghost" hidden>安裝到主畫面</button>
+      </div>
+      <p id="sensorHelp" class="help-text">
+        請使用手機瀏覽器開啟 HTTPS 網址，再點擊「啟用手機感測器」。iPhone / iPad 需要在點擊後授權動作與方向取用。
+      </p>
+    </section>
+
+    <section class="metrics-grid" aria-label="即時數值">
+      <article class="metric-card"><span>X 軸</span><strong id="metricX">0.000</strong><small>m/s²</small></article>
+      <article class="metric-card"><span>Y 軸</span><strong id="metricY">0.000</strong><small>m/s²</small></article>
+      <article class="metric-card"><span>Z 軸</span><strong id="metricZ">0.000</strong><small>m/s²</small></article>
+      <article class="metric-card emphasis"><span>合成振幅</span><strong id="metricMagnitude">0.000</strong><small>m/s²</small></article>
+      <article class="metric-card"><span>取樣率</span><strong id="metricRate">0.0</strong><small>Hz</small></article>
+      <article class="metric-card"><span>錄製峰值</span><strong id="metricPeak">0.000</strong><small>m/s²</small></article>
+    </section>
+
+    <section class="panel waveform-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">LIVE SIGNAL</p>
+          <h2>即時波形</h2>
+        </div>
+        <div class="legend" aria-label="波形圖例">
+          <span class="legend-x">X</span><span class="legend-y">Y</span><span class="legend-z">Z</span><span class="legend-m">|A|</span>
+        </div>
+      </div>
+      <div class="canvas-shell">
+        <canvas id="liveCanvas" aria-label="即時三軸加速度波形"></canvas>
+        <div id="canvasEmpty" class="canvas-empty">啟用感測器並搖晃手機，波形會出現在這裡</div>
+      </div>
+      <div class="waveform-footer">
+        <label>顯示時間窗
+          <select id="windowSeconds">
+            <option value="5">5 秒</option>
+            <option value="10" selected>10 秒</option>
+            <option value="20">20 秒</option>
+            <option value="30">30 秒</option>
+          </select>
+        </label>
+        <span id="recordingClock">00:00.0</span>
+      </div>
+    </section>
+
+    <section class="panel record-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">RECORD</p><h2>事件錄製</h2></div>
+        <span id="recordingBadge" class="recording-badge">待機</span>
+      </div>
+      <div class="form-grid">
+        <label>事件名稱
+          <input id="recordName" type="text" maxlength="80" placeholder="例如：桌面搖晃測試" />
+        </label>
+        <label>備註
+          <input id="recordNote" type="text" maxlength="200" placeholder="地點、手機擺放方式或實驗條件" />
+        </label>
+      </div>
+      <div class="toolbar wrap">
+        <button id="startRecordBtn" class="button danger">開始錄製</button>
+        <button id="stopRecordBtn" class="button secondary" disabled>停止並保存</button>
+        <button id="addMarkerBtn" class="button ghost" disabled>加入標記</button>
+      </div>
+      <p class="help-text">資料會先保存在此裝置的 IndexedDB。建議完成後另行匯出 JSON，或使用下方 GitHub 備份。</p>
+    </section>
+
+    <section id="replayPanel" class="panel replay-panel" hidden>
+      <div class="section-heading">
+        <div><p class="eyebrow">REPLAY</p><h2 id="replayTitle">歷史回放</h2></div>
+        <button id="closeReplayBtn" class="icon-button" aria-label="關閉回放">×</button>
+      </div>
+      <div class="canvas-shell replay-shell">
+        <canvas id="replayCanvas" aria-label="歷史訊號回放波形"></canvas>
+      </div>
+      <input id="replaySlider" class="timeline" type="range" min="0" max="1000" value="0" />
+      <div class="toolbar replay-controls">
+        <button id="replayPlayBtn" class="button primary">播放</button>
+        <button id="replayResetBtn" class="button secondary">回到開頭</button>
+        <label>速度
+          <select id="replaySpeed">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+        <span id="replayTime">00:00.0 / 00:00.0</span>
+      </div>
+      <div id="replayMetrics" class="replay-metrics"></div>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">HISTORY</p><h2>歷史紀錄</h2></div>
+        <div class="toolbar compact">
+          <label class="button ghost file-button">匯入 JSON<input id="importInput" type="file" accept="application/json,.json" hidden /></label>
+          <button id="exportAllBtn" class="button ghost">匯出全部</button>
+        </div>
+      </div>
+      <div id="historyEmpty" class="empty-state">尚無錄製紀錄</div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+
+    <section class="panel github-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">OPTIONAL BACKUP</p><h2>GitHub 歷史資料備份</h2></div>
+        <span id="githubStatus" class="status-chip muted">尚未設定</span>
+      </div>
+      <p class="help-text warning">
+        GitHub Pages 是靜態網站，不能安全地內建可寫入儲存庫的密鑰。本工具只接受你手動輸入 fine-grained token，權杖僅保留在目前頁面的記憶體中，重新整理後即消失。若儲存庫是公開的，備份的感測資料也會公開。
+      </p>
+      <div class="form-grid github-grid">
+        <label>GitHub 使用者 / 組織<input id="ghOwner" autocomplete="off" placeholder="oceanicdayi" /></label>
+        <label>儲存庫<input id="ghRepo" autocomplete="off" placeholder="Phone_seismometer" /></label>
+        <label>分支<input id="ghBranch" autocomplete="off" value="main" /></label>
+        <label>資料路徑<input id="ghPath" autocomplete="off" value="data/records" /></label>
+        <label class="wide">Fine-grained token（Contents: read/write）
+          <input id="ghToken" type="password" autocomplete="new-password" placeholder="github_pat_…（不會保存）" />
+        </label>
+      </div>
+      <div class="toolbar wrap">
+        <button id="saveGhConfigBtn" class="button secondary">保存非機密設定</button>
+        <button id="testGithubBtn" class="button ghost">測試 GitHub 連線</button>
+        <button id="syncAllBtn" class="button primary">備份全部紀錄</button>
+      </div>
+      <div id="syncLog" class="sync-log" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>此工具適合教學、展示與相對振動比較，不是經校正的專業強震儀，也不應用於生命安全或正式地震預警判定。</p>
+  </footer>
+
+  <template id="historyItemTemplate">
+    <article class="history-item">
+      <div class="history-main">
+        <h3></h3>
+        <p class="history-meta"></p>
+        <p class="history-note"></p>
+        <div class="history-stats"></div>
+      </div>
+      <div class="history-actions">
+        <button data-action="replay" class="button small primary">回放</button>
+        <button data-action="json" class="button small ghost">JSON</button>
+        <button data-action="csv" class="button small ghost">CSV</button>
+        <button data-action="github" class="button small secondary">GitHub</button>
+        <button data-action="delete" class="button small danger-outline">刪除</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
